@@ -42,3 +42,10 @@ class DataStore:
     
     def get_user_by_slack_id(self, slack_id: str):
         return self.db.query(User).filter(User.slack_id == slack_id).first()
+    
+    def create_review(self, user_id: str, url: str, reviewer_id: str, status: str = "in-review"):
+        new_review = Review(user_id=user_id, url=url, reviewer_id=reviewer_id, status=status)
+        self.db.add(new_review)
+        self.db.commit()
+        self.db.refresh(new_review)
+        return new_review
