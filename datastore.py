@@ -39,3 +39,6 @@ class DataStore:
             self.db.delete(user)
             self.db.commit()
         return user
+    
+    def get_user_by_slack_id(self, slack_id: str):
+        return self.db.query(User).filter(User.slack_id == slack_id).first()

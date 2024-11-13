@@ -1,7 +1,7 @@
 from slack_sdk.models.views import View
 from slack_sdk.models.blocks import InputBlock, StaticSelectElement
 
-def get_review_modal(reviewer_list):
+def review_modal(reviewer_list):
   return View(
         type="modal",
         callback_id="submit_review",

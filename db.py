@@ -9,7 +9,8 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
-db = SessionLocal()
+def init_db():
+  # Initialize the database
+  Base.metadata.create_all(bind=engine)
 
-# Initialize the database
-Base.metadata.create_all(bind=engine)
+db = SessionLocal()
