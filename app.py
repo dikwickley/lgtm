@@ -1,6 +1,4 @@
 from dotenv import load_dotenv
-load_dotenv()
-
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
 from slack_sdk.models.views import View
@@ -8,14 +6,16 @@ from slack_sdk.models.blocks import InputBlock, StaticSelectElement, Option
 
 from views.review_view import review_modal
 from views.config_view import config_modal
+from views.backlog_view import backlog_view
+
 from utils import get_channel_users
 from models import ReviewStatus
-
 from db import db, init_db
 from datastore import DataStore
 
 import os
 
+load_dotenv()
 init_db()
 app = App(token=os.getenv("SLACK_BOT_TOKEN"))
 datastore = DataStore(db=db)
@@ -111,6 +111,31 @@ def handle_review_submission(ack, body, client):
     client.chat_postMessage(
         channel=channel_id,
         text=f"<@{user_id}> requested a review from <@{reviewer_id}>: {review_url}"
+    )
+
+@app.command("/backlog")
+def handle_backlog_command(ack, respond, body, client):
+    ack()
+    # Determine the target user (self or mentioned user)
+    user_id = body["user_id"]
+    text = body.get("text", "").strip()
+    # target_user_id = text[2:-1] if text.startswith("<@") and text.endswith(">") else user_id
+    target_user_id = user_id
+
+    user = datastore.get_user_by_slack_id(target_user_id)
+
+    # Fetch submitted and assigned reviews from the datastore
+    submitted_reviews = datastore.get_reviews_submitted_by(target_user_id)
+    assigned_reviews = datastore.get_reviews_assigned_to(target_user_id)
+
+    # Generate the message blocks using backlog_view
+    blocks = backlog_view(user.name, submitted_reviews, assigned_reviews)
+
+    # Send the backlog message
+    respond(
+        blocks=blocks,
+        text=f"Backlog for <@{target_user_id}>",
+        response_type="ephemeral" 
     )
 
 if __name__ == "__main__":

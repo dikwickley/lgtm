@@ -1,4 +1,4 @@
-from models import User, Review
+from models import User, Review, ReviewStatus
 
 class DataStore:
     def __init__(self, db):
@@ -43,9 +43,17 @@ class DataStore:
     def get_user_by_slack_id(self, slack_id: str):
         return self.db.query(User).filter(User.slack_id == slack_id).first()
     
-    def create_review(self, user_id: str, url: str, reviewer_id: str, status: str = "in-review"):
+    def create_review(self, user_id: str, url: str, reviewer_id: str, status: str = ReviewStatus.IN_REVIEW):
         new_review = Review(user_id=user_id, url=url, reviewer_id=reviewer_id, status=status)
         self.db.add(new_review)
         self.db.commit()
         self.db.refresh(new_review)
         return new_review
+
+    def get_reviews_submitted_by(self, user_id: str):
+        # Retrieve reviews submitted by a user
+        return self.db.query(Review).filter(Review.user_id == user_id).all()
+
+    def get_reviews_assigned_to(self, reviewer_id: str):
+        # Retrieve reviews assigned to a reviewer
+        return self.db.query(Review).filter(Review.reviewer_id == reviewer_id).all()
