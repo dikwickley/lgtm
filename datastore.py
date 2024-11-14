@@ -44,3 +44,7 @@ class DataStore:
     def get_reviews_assigned_to(self, reviewer_id: str):
         # Retrieve reviews assigned to a reviewer
         return self.db.query(Review).filter(Review.reviewer_id == reviewer_id).all()
+
+    def get_review(self, review_id: int):
+        # Retrieve a review by ID
+        return self.db.query(Review).filter(Review.id == review_id).first()

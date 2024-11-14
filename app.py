@@ -5,6 +5,7 @@ from slack_bolt.adapter.socket_mode import SocketModeHandler
 from views.review_view import review_modal
 from views.config_view import config_modal
 from views.backlog_view import backlog_view
+from views.edit_review_view import edit_review_view
 
 from utils import get_channel_users
 from models import ReviewStatus
@@ -141,6 +142,21 @@ def handle_backlog_command(ack, respond, body, client):
         blocks=blocks,
         text=f"Backlog for <@{target_user_id}>",
         response_type="ephemeral" 
+    )
+@app.action("edit_review_action")
+def handle_edit_review_action(ack, body, client):
+    ack()
+
+    # Retrieve the review ID from the button's value
+    review_id = body["actions"][0]["value"]
+
+    # Fetch review details from the database
+    review = datastore.get_review(int(review_id))
+
+    # Open the edit modal with review details
+    client.views_open(
+        trigger_id=body["trigger_id"],
+        view=edit_review_view(review)
     )
 
 if __name__ == "__main__":

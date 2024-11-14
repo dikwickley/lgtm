@@ -1,9 +1,8 @@
-from datetime import datetime, timedelta
-from slack_sdk.models.blocks import SectionBlock
+from datetime import datetime
 
-def backlog_view(target_name, submitted_reviews, assigned_reviews):
+def backlog_view(target_user_id, submitted_reviews, assigned_reviews):
     blocks = [
-        {"type": "header", "text": {"type": "plain_text", "text": f"Backlog for {target_name}", "emoji": True}},
+        {"type": "header", "text": {"type": "plain_text", "text": f"Backlog for <@{target_user_id}>", "emoji": True}},
         {"type": "divider"}
     ]
     
@@ -17,14 +16,20 @@ def backlog_view(target_name, submitted_reviews, assigned_reviews):
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": f"• {review.url} | Reviewer: <@{review.reviewer_id}> | Status: `{review.status.value}`"
+                        "text": f"• <{review.url}|URL> | Reviewer: <@{review.reviewer_id}> | Status: {review.status.value}"
                     },
                     "fields": [
                         {
                             "type": "mrkdwn",
-                            "text": f"_{review.created_at.strftime('%Y-%m-%d %H:%M:%S')} | {elapsed_time.days} days ago_"
+                            "text": f"_{review.created_at.strftime('%Y-%m-%d %H:%M:%S')}_\n_{elapsed_time.days} days ago_"
                         }
-                    ]
+                    ],
+                    "accessory": {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Edit"},
+                        "action_id": "edit_review_action",
+                        "value": str(review.id)  # Pass review ID as the button value
+                    }
                 }
             )
     else:
@@ -41,14 +46,20 @@ def backlog_view(target_name, submitted_reviews, assigned_reviews):
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": f"• <{review.url}|URL> | Submitted by: <@{review.user_id}> | Status: `{review.status.value}`"
+                        "text": f"• <{review.url}|URL> | Submitted by: <@{review.user_id}> | Status: {review.status.value}"
                     },
                     "fields": [
                         {
                             "type": "mrkdwn",
                             "text": f"_{review.created_at.strftime('%Y-%m-%d %H:%M:%S')}_\n_{elapsed_time.days} days ago_"
                         }
-                    ]
+                    ],
+                    "accessory": {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "Edit"},
+                        "action_id": "edit_review_action",
+                        "value": str(review.id)  # Pass review ID as the button value
+                    }
                 }
             )
     else:
