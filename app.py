@@ -1,8 +1,6 @@
 from dotenv import load_dotenv
 from slack_bolt import App
 from slack_bolt.adapter.socket_mode import SocketModeHandler
-from slack_sdk.models.views import View
-from slack_sdk.models.blocks import InputBlock, StaticSelectElement, Option
 
 from views.review_view import review_modal
 from views.config_view import config_modal
@@ -32,7 +30,7 @@ def open_config_modal(ack, body, client):
     channel_id = body['channel_id']
 
     # Retrieve the list of users from DataStore
-    users = datastore.get_all_users()
+    users = datastore.get_all_users_for_channel(channel_id)
 
     # Open the modal
     client.views_open(
@@ -48,8 +46,12 @@ def handle_sync_users_action(ack, body, client):
 
     # Add each user to the database if they do not already exist
     for user in current_channel_users:
-        if not datastore.get_user_by_slack_id(user["id"]):
-            datastore.create_user(name=user["real_name"], slack_id=user["id"])
+        if not datastore.get_user_by_slack_id(user["id"], channel_id):
+            datastore.create_user(
+                name=user["real_name"],
+                slack_id=user["id"],
+                channel_id=channel_id
+                )
 
     # Notify the user who pressed the button in a private message
     client.chat_postMessage(
@@ -62,19 +64,21 @@ def handle_sync_users_action(ack, body, client):
 def handle_config_modal_submission(ack, body, client):
     ack()
 
+    channel_id = body["view"]["private_metadata"]
+
     # Extract selected reviewers from the user multi-select input
     selected_reviewers = body["view"]["state"]["values"]["reviewer_select"]["selected_reviewers"]["selected_users"]
     selected_reviewer_ids = set(selected_reviewers)
 
     # Update reviewer status only for users already in the database
-    all_users = datastore.get_all_users()
+    all_users = datastore.get_all_users_for_channel(channel_id=channel_id)
     for user in all_users:
         # Set is_reviewer to True for selected reviewers, False for unselected
         is_reviewer = user.slack_id in selected_reviewer_ids
-        datastore.update_user(user.id, is_reviewer=is_reviewer)
+        datastore.update_user(user.id, is_reviewer=is_reviewer, channel_id=channel_id)
 
     # Post a message to the channel to confirm the update
-    channel_id = body["view"]["private_metadata"]
+    
     client.chat_postMessage(
         channel=channel_id,
         text="Reviewer statuses have been successfully updated in the channel."
@@ -85,7 +89,7 @@ def open_review_modal(ack, body, client):
     ack()
     channel_id = body['channel_id']
     # Fetch reviewers from the database
-    reviewers = datastore.get_all_reviewers()
+    reviewers = datastore.get_all_reviewers_for_channel(channel_id=channel_id)
 
     # Open the modal
     client.views_open(
@@ -116,13 +120,14 @@ def handle_review_submission(ack, body, client):
 @app.command("/backlog")
 def handle_backlog_command(ack, respond, body, client):
     ack()
+    channel_id = body['channel_id']
     # Determine the target user (self or mentioned user)
     user_id = body["user_id"]
     text = body.get("text", "").strip()
     # target_user_id = text[2:-1] if text.startswith("<@") and text.endswith(">") else user_id
     target_user_id = user_id
 
-    user = datastore.get_user_by_slack_id(target_user_id)
+    user = datastore.get_user_by_slack_id(slack_id=target_user_id, channel_id=channel_id)
 
     # Fetch submitted and assigned reviews from the datastore
     submitted_reviews = datastore.get_reviews_submitted_by(target_user_id)

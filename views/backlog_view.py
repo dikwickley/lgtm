@@ -17,7 +17,7 @@ def backlog_view(target_name, submitted_reviews, assigned_reviews):
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": f"• <{review.url}|URL> | Reviewer: <@{review.reviewer_id}> | Status: `{review.status.value}`"
+                        "text": f"• {review.url} | Reviewer: <@{review.reviewer_id}> | Status: `{review.status.value}`"
                     },
                     "fields": [
                         {
