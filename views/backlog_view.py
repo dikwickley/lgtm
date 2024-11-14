@@ -1,8 +1,8 @@
 from datetime import datetime
 
-def backlog_view(target_user_id, submitted_reviews, assigned_reviews):
+def backlog_view(target_user_name,submitted_reviews, assigned_reviews):
     blocks = [
-        {"type": "header", "text": {"type": "plain_text", "text": f"Backlog for <@{target_user_id}>", "emoji": True}},
+        {"type": "header", "text": {"type": "plain_text", "text": f"Backlog for {target_user_name}", "emoji": True}},
         {"type": "divider"}
     ]
     
@@ -10,20 +10,13 @@ def backlog_view(target_user_id, submitted_reviews, assigned_reviews):
     if submitted_reviews:
         blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": "*Submitted Reviews:*"}})
         for review in submitted_reviews:
-            elapsed_time = datetime.now() - review.created_at
             blocks.append(
                 {
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": f"• <{review.url}|URL> | Reviewer: <@{review.reviewer_id}> | Status: {review.status.value}"
+                        "text": f"• <{review.url}|URL> | Reviewer: <@{review.reviewer_id}> | Status: `{review.status.value}` \n _{review.created_at.strftime('%Y-%m-%d %H:%M:%S')}_"
                     },
-                    "fields": [
-                        {
-                            "type": "mrkdwn",
-                            "text": f"_{review.created_at.strftime('%Y-%m-%d %H:%M:%S')}_\n_{elapsed_time.days} days ago_"
-                        }
-                    ],
                     "accessory": {
                         "type": "button",
                         "text": {"type": "plain_text", "text": "Edit"},
@@ -40,20 +33,13 @@ def backlog_view(target_user_id, submitted_reviews, assigned_reviews):
     if assigned_reviews:
         blocks.append({"type": "section", "text": {"type": "mrkdwn", "text": "*Reviews To Do:*"}})
         for review in assigned_reviews:
-            elapsed_time = datetime.now() - review.created_at
             blocks.append(
                 {
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": f"• <{review.url}|URL> | Submitted by: <@{review.user_id}> | Status: {review.status.value}"
+                        "text": f"• <{review.url}|URL> | Submitted by: <@{review.user_id}> | Status: `{review.status.value}` \n _{review.created_at.strftime('%Y-%m-%d %H:%M:%S')}_"
                     },
-                    "fields": [
-                        {
-                            "type": "mrkdwn",
-                            "text": f"_{review.created_at.strftime('%Y-%m-%d %H:%M:%S')}_\n_{elapsed_time.days} days ago_"
-                        }
-                    ],
                     "accessory": {
                         "type": "button",
                         "text": {"type": "plain_text", "text": "Edit"},
