@@ -1,0 +1,5 @@
+python-dotenv==1.0.1
+slack_bolt==1.21.2
+slack_sdk==3.33.3
+SQLAlchemy==2.0.36
+typing_extensions==4.12.2
