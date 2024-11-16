@@ -1,3 +1,4 @@
+from models import ReviewStatus
 from slack_sdk.models.views import View
 from slack_sdk.models.blocks import InputBlock
 from slack_sdk.models.blocks import PlainTextInputElement, StaticSelectElement, Option
@@ -5,15 +6,16 @@ from slack_sdk.models.blocks import PlainTextInputElement, StaticSelectElement, 
 def edit_review_view(review, reviewers):
     # Prepare options for the reviewer dropdown, pre-selecting the current reviewer
     reviewer_options = [
-        Option(text={"type": "plain_text", "text": reviewer.name}, value=reviewer.slack_id)
+        Option(text={"type": "plain_text", "text": reviewer.name}, value=str(reviewer.id))
         for reviewer in reviewers
     ]
-    current_reviewer_option = next((option for option in reviewer_options if option.value == review.reviewer_id), None)
+    current_reviewer_option = next((option for option in reviewer_options if option.value == str(review.reviewer_id)), None)
 
+    # TODO: Make this dynamic based on items in ReivewStatus.
     # Status options
     status_options = [
-        Option(text={"type": "plain_text", "text": "In-Review"}, value="IN_REVIEW"),
-        Option(text={"type": "plain_text", "text": "Done"}, value="DONE")
+        Option(text={"type": "plain_text", "text": "In-Review"}, value=ReviewStatus.IN_REVIEW.value),
+        Option(text={"type": "plain_text", "text": "Done"}, value=ReviewStatus.DONE.value)
     ]
     current_status_option = next((option for option in status_options if option.value == review.status.value), None)
 

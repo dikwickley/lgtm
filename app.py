@@ -13,8 +13,6 @@ from db import db, init_db
 from datastore import DataStore
 
 import os
-import time
-from threading import Timer
 
 
 load_dotenv()
@@ -23,28 +21,14 @@ app = App(token=os.getenv("SLACK_BOT_TOKEN"))
 datastore = DataStore(db=db)
 
 @app.message("hello")
-def message_hello(message, say, client):
-    # Send ephemeral message to the user
-    response = client.chat_postEphemeral(
-        channel=message["channel"],
-        user=message["user"],
-        text="Hello, world! This message will disappear in 1 minute."
-    )
-    
-    # Schedule deletion of the message after 1 minute
-
-
-# @app.message("hello")
-# def message_hello(message, say):
-#     # say() sends a message to the channel where the event was triggered
-#     say(f"Hey there <@{message['user']}>!")
+def message_hello(message, say):
+    # say() sends a message to the channel where the event was triggered
+    say(f"Hey there <@{message['user']}>!")
 
 @app.command("/config")
 def open_config_modal(ack, body, client):
     ack()
-
     channel_id = body['channel_id']
-
     # Retrieve the list of users from DataStore
     users = datastore.get_all_users_for_channel(channel_id)
 
@@ -77,7 +61,7 @@ def handle_sync_users_action(ack, body, client):
 
 
 @app.view("config_modal")
-def handle_config_modal_submission(ack, body, client):
+def handle_config_modal_submission(ack, body, respond, client):
     ack()
 
     channel_id = body["view"]["private_metadata"]
@@ -88,13 +72,37 @@ def handle_config_modal_submission(ack, body, client):
 
     # Update reviewer status only for users already in the database
     all_users = datastore.get_all_users_for_channel(channel_id=channel_id)
+    # List of all reviewers with some pending reviews.
+    busy_reviewers = []
     for user in all_users:
         # Set is_reviewer to True for selected reviewers, False for unselected
-        is_reviewer = user.slack_id in selected_reviewer_ids
-        datastore.update_user(user.id, is_reviewer=is_reviewer, channel_id=channel_id)
+        is_already_reviewer = user.is_reviewer
+        is_user_in_selected_reviewer = user.slack_id in selected_reviewer_ids
+        # We have to handle few cases.
+        # 1. user is a reviewer & is selected. // no change
+        # 2. user is not a reviewer & is selected. // promote user to reviewer.
+        if (is_user_in_selected_reviewer):
+            datastore.update_user(user.id, is_reviewer=True, channel_id=channel_id)
+        
+        # 3. user is a reviewer & is NOT selected. // demote a reviewer.
+        #    condition: do not let reviewer be demoted unless backlog is clear.
+        if (is_already_reviewer and not is_user_in_selected_reviewer):
+            # check if user has any pending reviews.
+            pending_reviews = [review for review in user.reviews_given if review.status == ReviewStatus.IN_REVIEW]
+            busy_reviewers.append(user)
 
-    # Post a message to the channel to confirm the update
-    
+            # Only remove the reviewer is he has no pending reviews.
+            if (len(pending_reviews) == 0):
+                datastore.update_user(user.id, is_reviewer=False, channel_id=channel_id)
+
+    if busy_reviewers:
+        client.chat_postMessage(
+            channel=channel_id,
+            text="""These reviewers cannot be removed as they have pending reviews. \n""" +
+                f"""Reviewers: {','.join([f"<@{user.slack_id}>" for user in busy_reviewers])} \n""" +
+                """Please complete the reviews or assign them to someone else."""
+        )
+
     client.chat_postMessage(
         channel=channel_id,
         text="Reviewer statuses have been successfully updated in the channel."
@@ -118,19 +126,23 @@ def handle_review_submission(ack, body, client):
     ack()
 
     # Extract data from the submitted modal
+    channel_id = body["view"]["private_metadata"]
     submitted_data = body["view"]["state"]["values"]
     review_url = submitted_data["url_input"]["url"]["value"]
-    reviewer_id = submitted_data["reviewer_select"]["selected_reviewer"]["selected_option"]["value"]
-    user_id = body["user"]["id"]  # The person who initiated the review
+    reviewer_slack_id = submitted_data["reviewer_select"]["selected_reviewer"]["selected_option"]["value"]
+    user_slack_id = body["user"]["id"]  # The person who initiated the review
+
+    user = datastore.get_user_by_slack_id(user_slack_id, channel_id)
+    reviewer = datastore.get_user_by_slack_id(reviewer_slack_id, channel_id)
 
     # Add the review to the database
-    datastore.create_review(user_id=user_id, url=review_url, reviewer_id=reviewer_id, status=ReviewStatus.IN_REVIEW)
+    datastore.create_review(user_id=user.id, url=review_url, reviewer_id=reviewer.id, status=ReviewStatus.IN_REVIEW)
 
     # Post a message in the channel to notify about the review request
     channel_id = body["view"]["private_metadata"]
     client.chat_postMessage(
         channel=channel_id,
-        text=f"<@{user_id}> requested a review from <@{reviewer_id}> for {review_url}"
+        text=f"<@{user_slack_id}> requested a review from <@{reviewer_slack_id}> for {review_url}"
     )
 
 @app.command("/backlog")
@@ -139,15 +151,16 @@ def handle_backlog_command(ack, respond, body, client):
     channel_id = body['channel_id']
     # Determine the target user (self or mentioned user)
     user_id = body["user_id"]
-    text = body.get("text", "").strip()
-    # target_user_id = text[2:-1] if text.startswith("<@") and text.endswith(">") else user_id
-    target_user_id = user_id
 
-    user = datastore.get_user_by_slack_id(slack_id=target_user_id, channel_id=channel_id)
+    user = datastore.get_user_by_slack_id(slack_id=user_id, channel_id=channel_id)
+
+    if (user is None):
+        respond(f"<@{user_id}> not in LGTM. Please sync with `/config`")
+        return
 
     # Fetch submitted and assigned reviews from the datastore
-    submitted_reviews = datastore.get_reviews_submitted_by(target_user_id)
-    assigned_reviews = datastore.get_reviews_assigned_to(target_user_id)
+    submitted_reviews = datastore.get_reviews_submitted_by(user.id)
+    assigned_reviews = datastore.get_reviews_assigned_to(user.id)
 
     # Generate the message blocks using backlog_view
     blocks = backlog_view(user.name, submitted_reviews, assigned_reviews)
@@ -155,9 +168,10 @@ def handle_backlog_command(ack, respond, body, client):
     # Send the backlog message
     respond(
         blocks=blocks,
-        text=f"Backlog for <@{target_user_id}>",
+        text=f"Backlog for <@{user_id}>",
         response_type="ephemeral" 
     )
+
 @app.action("edit_review_action")
 def handle_edit_review_action(ack, body, client):
     ack()
@@ -177,15 +191,18 @@ def handle_edit_review_action(ack, body, client):
     )
 
 @app.view("submit_edit_review")
-def handle_edit_review_submission(ack, body, respond, client):
+def handle_edit_review_submission(ack, body, client):
     ack()
 
     # Extract data from the submission
     submitted_data = body["view"]["state"]["values"]
-    review_id = body["view"]["private_metadata"]  # Assuming review_id is stored here
+    review_id = body["view"]["private_metadata"]
     updated_url = submitted_data["url_input"]["url"]["value"]
     updated_reviewer_id = submitted_data["reviewer_select"]["selected_reviewer"]["selected_option"]["value"]
     updated_status = submitted_data["status_select"]["selected_status"]["selected_option"]["value"]
+
+    # TODO: Check if reviewer is sill a reviewer.
+    # If not, push the update review modal again.
 
     # Update the review in the database
     datastore.update_review(
@@ -197,8 +214,9 @@ def handle_edit_review_submission(ack, body, respond, client):
 
     # Send confirmation message
     user_id = body["user"]["id"]
-    client.postEphemeral(
+    client.chat_postEphemeral(
         channel=user_id,
+        user=user_id,
         text="The review has been successfully updated."
     )
 

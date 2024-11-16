@@ -1,0 +1,5 @@
+todo
+
+1. check for removing reviewers flow. [done]
+2. updating a review. [done]
+3. Update the config modal on sync all

@@ -7,8 +7,11 @@ from db import Base
 
 # Enum for review status
 class ReviewStatus(enum.Enum):
-    IN_REVIEW = "in-review"
-    DONE = "done"
+    IN_REVIEW = "IN_REVIEW"
+    DONE = "DONE"
+
+    def __len__(self) -> int:
+        return len(self.value)
 
 # User model
 class User(Base):
@@ -24,7 +27,7 @@ class User(Base):
 
     # Relationships
     reviews_given = relationship("Review", foreign_keys="[Review.reviewer_id]", back_populates="reviewer")
-    reviews_received = relationship("Review", foreign_keys="[Review.user_id]", back_populates="reviewed_user")
+    reviews_received = relationship("Review", foreign_keys="[Review.user_id]", back_populates="user")
 
     __table_args__ = (UniqueConstraint("slack_id", "channel_id", name="_slack_channel_uc"),)
 
@@ -41,4 +44,4 @@ class Review(Base):
 
     # Relationships
     reviewer = relationship("User", foreign_keys=[reviewer_id], back_populates="reviews_given")
-    reviewed_user = relationship("User", foreign_keys=[user_id], back_populates="reviews_received")
+    user = relationship("User", foreign_keys=[user_id], back_populates="reviews_received")
