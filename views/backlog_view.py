@@ -15,7 +15,7 @@ def backlog_view(target_user_name,submitted_reviews, assigned_reviews):
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": f"• <{review.url}|URL> | Reviewer: <@{review.reviewer_id}> | Status: `{review.status.value}` \n _{review.created_at.strftime('%Y-%m-%d %H:%M:%S')}_"
+                        "text": f"• <{review.url}|{review.url}> | Reviewer: <@{review.reviewer_id}> | Status: `{review.status.value}` \n _{review.created_at.strftime('%Y-%m-%d %H:%M:%S')}_"
                     },
                     "accessory": {
                         "type": "button",
@@ -38,7 +38,7 @@ def backlog_view(target_user_name,submitted_reviews, assigned_reviews):
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": f"• <{review.url}|URL> | Submitted by: <@{review.user_id}> | Status: `{review.status.value}` \n _{review.created_at.strftime('%Y-%m-%d %H:%M:%S')}_"
+                        "text": f"• <{review.url}|{review.url}> | Submitted by: <@{review.user_id}> | Status: `{review.status.value}` \n _{review.created_at.strftime('%Y-%m-%d %H:%M:%S')}_"
                     },
                     "accessory": {
                         "type": "button",

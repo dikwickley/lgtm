@@ -16,7 +16,7 @@ class User(Base):
     
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     name = Column(String, nullable=False)
-    slack_id = Column(String, unique=True, nullable=False)
+    slack_id = Column(String, nullable=False)
     channel_id = Column(String, nullable=False)
     is_reviewer = Column(Boolean, default=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

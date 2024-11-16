@@ -13,6 +13,9 @@ from db import db, init_db
 from datastore import DataStore
 
 import os
+import time
+from threading import Timer
+
 
 load_dotenv()
 init_db()
@@ -20,9 +23,21 @@ app = App(token=os.getenv("SLACK_BOT_TOKEN"))
 datastore = DataStore(db=db)
 
 @app.message("hello")
-def message_hello(message, say):
-    # say() sends a message to the channel where the event was triggered
-    say(f"Hey there <@{message['user']}>!")
+def message_hello(message, say, client):
+    # Send ephemeral message to the user
+    response = client.chat_postEphemeral(
+        channel=message["channel"],
+        user=message["user"],
+        text="Hello, world! This message will disappear in 1 minute."
+    )
+    
+    # Schedule deletion of the message after 1 minute
+
+
+# @app.message("hello")
+# def message_hello(message, say):
+#     # say() sends a message to the channel where the event was triggered
+#     say(f"Hey there <@{message['user']}>!")
 
 @app.command("/config")
 def open_config_modal(ack, body, client):
@@ -115,7 +130,7 @@ def handle_review_submission(ack, body, client):
     channel_id = body["view"]["private_metadata"]
     client.chat_postMessage(
         channel=channel_id,
-        text=f"<@{user_id}> requested a review from <@{reviewer_id}>: {review_url}"
+        text=f"<@{user_id}> requested a review from <@{reviewer_id}> for {review_url}"
     )
 
 @app.command("/backlog")
@@ -149,6 +164,8 @@ def handle_edit_review_action(ack, body, client):
 
     # Retrieve the review ID from the button's value
     review_id = body["actions"][0]["value"]
+    channel_id = body["channel"]["id"]
+    reviewers = datastore.get_all_reviewers_for_channel(channel_id=channel_id)
 
     # Fetch review details from the database
     review = datastore.get_review(int(review_id))
@@ -156,7 +173,33 @@ def handle_edit_review_action(ack, body, client):
     # Open the edit modal with review details
     client.views_open(
         trigger_id=body["trigger_id"],
-        view=edit_review_view(review)
+        view=edit_review_view(review, reviewers)
+    )
+
+@app.view("submit_edit_review")
+def handle_edit_review_submission(ack, body, respond, client):
+    ack()
+
+    # Extract data from the submission
+    submitted_data = body["view"]["state"]["values"]
+    review_id = body["view"]["private_metadata"]  # Assuming review_id is stored here
+    updated_url = submitted_data["url_input"]["url"]["value"]
+    updated_reviewer_id = submitted_data["reviewer_select"]["selected_reviewer"]["selected_option"]["value"]
+    updated_status = submitted_data["status_select"]["selected_status"]["selected_option"]["value"]
+
+    # Update the review in the database
+    datastore.update_review(
+        review_id=int(review_id),
+        url=updated_url,
+        reviewer_id=updated_reviewer_id,
+        status=updated_status
+    )
+
+    # Send confirmation message
+    user_id = body["user"]["id"]
+    client.postEphemeral(
+        channel=user_id,
+        text="The review has been successfully updated."
     )
 
 if __name__ == "__main__":

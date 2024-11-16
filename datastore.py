@@ -48,3 +48,13 @@ class DataStore:
     def get_review(self, review_id: int):
         # Retrieve a review by ID
         return self.db.query(Review).filter(Review.id == review_id).first()
+
+    def update_review(self, review_id: int, url: str, reviewer_id: str, status: str):
+        review = self.db.query(Review).filter(Review.id == review_id).first()
+        if review:
+            review.url = url
+            review.reviewer_id = reviewer_id
+            review.status = status
+            self.db.commit()
+            self.db.refresh(review)
+        return review
