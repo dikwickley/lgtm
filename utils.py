@@ -1,4 +1,5 @@
 import json
+import threading
 
 # Function to retrieve users in a channel
 def get_channel_users(client, channel_id):
@@ -22,3 +23,20 @@ def metadata_serializer(object):
 
 def metadata_deserializer(object):
     return json.loads(object)
+
+
+class DelayedExecutor:
+    def __init__(self):
+        self.timers = []
+
+    def set_timeout(self, callback, delay_in_seconds, *args, **kwargs):
+        timer = threading.Timer(delay_in_seconds, callback, args=args, kwargs=kwargs)
+        self.timers.append(timer)
+        timer.start()
+        return timer
+
+    def cancel_all(self):
+        """Cancel all scheduled timers."""
+        for timer in self.timers:
+            timer.cancel()
+        self.timers.clear()

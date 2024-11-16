@@ -58,3 +58,16 @@ class DataStore:
             self.db.commit()
             self.db.refresh(review)
         return review
+
+    def delete_review(self, review_id):
+        review = self.db.query(Review).filter_by(id=review_id).first()
+        if not review:
+            return False
+
+        try:
+            self.db.delete(review)
+            self.db.commit()
+            return True
+        except Exception as e:
+            self.db.rollback()
+            return False

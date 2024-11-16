@@ -6,8 +6,9 @@ from views.review_view import review_modal
 from views.config_view import config_modal
 from views.backlog_view import backlog_view
 from views.edit_review_view import edit_review_view
+from views.message_view import message_view
 
-from utils import get_channel_users, metadata_deserializer, ping_reviewer
+from utils import get_channel_users, metadata_deserializer, ping_reviewer, DelayedExecutor
 from models import ReviewStatus
 from db import db, init_db
 from datastore import DataStore
@@ -168,13 +169,27 @@ def handle_backlog_command(ack, respond, body, client):
     blocks = backlog_view(user.name, submitted_reviews, assigned_reviews)
 
     # Send the backlog message
-    respond(
+    chat = client.chat_postEphemeral(
+        channel=channel_id,
+        user=user_id,
         blocks=blocks,
         text=f"Backlog for <@{user_id}>",
-        response_type="ephemeral" 
     )
 
-@app.action("ping_reviewer_from_backlog")
+
+    # TODO: Look into deleting message after some time.
+    # executor = DelayedExecutor()
+
+    # def delete_chat_message():
+    #     message_id = chat.data["message_ts"]
+    #     client.chat_delete(
+    #         channel=channel_id,
+    #         ts=message_id
+    #     )
+
+    # executor.set_timeout(delete_chat_message, 10)
+
+@app.action("ping_review_action")
 def handle_ping_reviewer_action(ack, body, client):
     ack()
 
@@ -183,14 +198,39 @@ def handle_ping_reviewer_action(ack, body, client):
 
     ping_reviewer(client, review)
 
-    channel_id = review.user.channel_id
-    user_slack_id = review.user.slack_id
-    reviewer_slack_id = review.reviewer.slack_id
+    # Don't need to send message as we are showing message modal.
+    # channel_id = review.user.channel_id
+    # user_slack_id = review.user.slack_id
+    # reviewer_slack_id = review.reviewer.slack_id
 
-    client.chat_postEphemeral(
-        channel=channel_id,
-        user=user_slack_id,
-        text=f"<@{reviewer_slack_id}> was pinged for {review.url}."
+    # client.chat_postEphemeral(
+    #     channel=channel_id,
+    #     user=user_slack_id,
+    #     text=f"<@{reviewer_slack_id}> was pinged for {review.url}."
+    # )
+
+    client.views_update(
+        view_id=body["view"]["id"],
+        trigger_id=body["trigger_id"],
+        view=message_view("Pinged!")
+    )
+
+@app.action("delete_review_action")
+def handle_delete_reviewer_action(ack, body, client):
+    ack()
+
+    review_id = int(body["actions"][0]["value"])
+    review = datastore.get_review(review_id=review_id)
+    result = datastore.delete_review(review_id=review_id)
+
+    message = "Some Error Occured!"
+    if result:
+        message = f"Review {review.url} deleted successfully!"
+
+    client.views_update(
+        view_id=body["view"]["id"],
+        trigger_id=body["trigger_id"],
+        view=message_view(message)
     )
 
 @app.action("edit_review_action")

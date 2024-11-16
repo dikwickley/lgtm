@@ -17,37 +17,12 @@ def backlog_view(target_user_name,submitted_reviews, assigned_reviews):
                         "type": "mrkdwn",
                         "text": f"• <{review.url}|{review.url}> | Reviewer: <@{review.reviewer.slack_id}> | `{review.status.value}` | _{review.created_at.strftime('%Y-%m-%d %H:%M:%S')}_"
                     },
-                    # "accessory": {
-                    #     "type": "button",
-                    #     "text": {"type": "plain_text", "text": "Edit"},
-                    #     "action_id": "edit_review_action",
-                    #     "value": str(review.id)  # Pass review ID as the button value
-                    # },
-                }
-            )
-            blocks.append(
-                {
-                    "type": "actions",
-                    "elements": [
-                        {
-                            "type": "button",
-                            "text": {
-                                "type": "plain_text",
-                                "text": "Edit",
-                            },
-                            "value": str(review.id),
-                            "action_id": "edit_review_action"
-                        },
-                        {
-                            "type": "button",
-                            "text": {
-                                "type": "plain_text",
-                                "text": "Ping Reviewer",
-                            },
-                            "value": str(review.id),
-                            "action_id": "ping_reviewer_from_backlog"
-                        },
-                    ]
+                    "accessory": {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "View"},
+                        "action_id": "edit_review_action",
+                        "value": str(review.id)  # Pass review ID as the button value
+                    },
                 }
             )
     else:
@@ -63,30 +38,14 @@ def backlog_view(target_user_name,submitted_reviews, assigned_reviews):
                     "type": "section",
                     "text": {
                         "type": "mrkdwn",
-                        "text": f"• <{review.url}|{review.url}> | Submitted by: <@{review.user_id}> | `{review.status.value}` | _{review.created_at.strftime('%Y-%m-%d %H:%M:%S')}_"
+                        "text": f"• <{review.url}|{review.url}> | Submitted by: <@{review.user.slack_id}> | `{review.status.value}` | _{review.created_at.strftime('%Y-%m-%d %H:%M:%S')}_"
                     },
-                    # "accessory": {
-                    #     "type": "button",
-                    #     "text": {"type": "plain_text", "text": "Edit"},
-                    #     "action_id": "edit_review_action",
-                    #     "value": str(review.id)  # Pass review ID as the button value
-                    # }
-                }
-            )
-            blocks.append(
-                {
-                    "type": "actions",
-                    "elements": [
-                        {
-                            "type": "button",
-                            "text": {
-                                "type": "plain_text",
-                                "text": "Edit",
-                            },
-                            "value": str(review.id),
-                            "action_id": "edit_review_action"
-                        },
-                    ]
+                    "accessory": {
+                        "type": "button",
+                        "text": {"type": "plain_text", "text": "View"},
+                        "action_id": "edit_review_action",
+                        "value": str(review.id) # Pass review ID as the button value
+                    }
                 }
             )
     else:

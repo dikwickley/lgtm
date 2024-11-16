@@ -29,9 +29,16 @@ def edit_review_view(channel_id, review, reviewers):
         type="modal",
         callback_id="submit_edit_review",
         private_metadata=private_metadata,
-        title={"type": "plain_text", "text": "Edit Review"},
+        title={"type": "plain_text", "text": "View Review"},
         submit={"type": "plain_text", "text": "Save"},
         blocks=[
+            {
+                "type": "header",
+                "text": {
+                    "type": "plain_text",
+                    "text": "Edit Review",
+                }
+            },
             # TODO use: https://api.slack.com/reference/block-kit/block-elements#url
             InputBlock(
                 block_id="url_input",
@@ -58,6 +65,55 @@ def edit_review_view(channel_id, review, reviewers):
                     options=status_options,
                     initial_option=current_status_option  # Preselect current status
                 )
-            )
+            ),
+            {
+                "type": "header",
+                "text": {
+                    "type": "plain_text",
+                    "text": "Review Actions",
+                }
+            },
+            {
+                "type": "actions",
+                "elements": [
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": f"Ping {review.reviewer.name}",
+                        },
+                        "value": str(review.id),
+                        "action_id": "ping_review_action"
+                    },
+                    {
+                        "type": "button",
+                        "text": {
+                            "type": "plain_text",
+                            "text": "Delete Review",
+                        },
+                        "confirm": {
+                            "title": {
+                                "type": "plain_text",
+                                "text": "Are you sure?"
+                            },
+                            "text": {
+                                "type": "plain_text",
+                                "text": "Delete this review permanently?"
+                            },
+                            "confirm": {
+                                "type": "plain_text",
+                                "text": "Do it"
+                            },
+                            "deny": {
+                                "type": "plain_text",
+                                "text": "Stop, I've changed my mind!"
+                            }
+                        },
+                        "style": "danger",
+                        "value": str(review.id),
+                        "action_id": "delete_review_action"
+                    },
+                ]
+            }
         ]
     )
