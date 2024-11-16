@@ -31,6 +31,7 @@ def review_modal(channel_id, reviewers):
         title={"type": "plain_text", "text": "Submit a Review"},
         submit={"type": "plain_text", "text": "Submit"},
         blocks=[
+            # TODO: use https://api.slack.com/reference/block-kit/block-elements#url
             InputBlock(
                 block_id="url_input",
                 label={"type": "plain_text", "text": "Review URL"},

@@ -7,7 +7,7 @@ from views.config_view import config_modal
 from views.backlog_view import backlog_view
 from views.edit_review_view import edit_review_view
 
-from utils import get_channel_users
+from utils import get_channel_users, metadata_deserializer, ping_reviewer
 from models import ReviewStatus
 from db import db, init_db
 from datastore import DataStore
@@ -136,7 +136,9 @@ def handle_review_submission(ack, body, client):
     reviewer = datastore.get_user_by_slack_id(reviewer_slack_id, channel_id)
 
     # Add the review to the database
-    datastore.create_review(user_id=user.id, url=review_url, reviewer_id=reviewer.id, status=ReviewStatus.IN_REVIEW)
+    new_review = datastore.create_review(user_id=user.id, url=review_url, reviewer_id=reviewer.id, status=ReviewStatus.IN_REVIEW)
+
+    ping_reviewer(client, new_review)
 
     # Post a message in the channel to notify about the review request
     channel_id = body["view"]["private_metadata"]
@@ -172,6 +174,25 @@ def handle_backlog_command(ack, respond, body, client):
         response_type="ephemeral" 
     )
 
+@app.action("ping_reviewer_from_backlog")
+def handle_ping_reviewer_action(ack, body, client):
+    ack()
+
+    review_id = int(body["actions"][0]["value"])
+    review = datastore.get_review(review_id)
+
+    ping_reviewer(client, review)
+
+    channel_id = review.user.channel_id
+    user_slack_id = review.user.slack_id
+    reviewer_slack_id = review.reviewer.slack_id
+
+    client.chat_postEphemeral(
+        channel=channel_id,
+        user=user_slack_id,
+        text=f"<@{reviewer_slack_id}> was pinged for {review.url}."
+    )
+
 @app.action("edit_review_action")
 def handle_edit_review_action(ack, body, client):
     ack()
@@ -187,7 +208,7 @@ def handle_edit_review_action(ack, body, client):
     # Open the edit modal with review details
     client.views_open(
         trigger_id=body["trigger_id"],
-        view=edit_review_view(review, reviewers)
+        view=edit_review_view(channel_id, review, reviewers)
     )
 
 @app.view("submit_edit_review")
@@ -195,8 +216,11 @@ def handle_edit_review_submission(ack, body, client):
     ack()
 
     # Extract data from the submission
+    user_id = body["user"]["id"]
     submitted_data = body["view"]["state"]["values"]
-    review_id = body["view"]["private_metadata"]
+    private_metadata = metadata_deserializer(body["view"]["private_metadata"])
+    review_id = private_metadata['review_id']
+    channel_id = private_metadata['channel_id']
     updated_url = submitted_data["url_input"]["url"]["value"]
     updated_reviewer_id = submitted_data["reviewer_select"]["selected_reviewer"]["selected_option"]["value"]
     updated_status = submitted_data["status_select"]["selected_status"]["selected_option"]["value"]
@@ -204,18 +228,20 @@ def handle_edit_review_submission(ack, body, client):
     # TODO: Check if reviewer is sill a reviewer.
     # If not, push the update review modal again.
 
-    # Update the review in the database
-    datastore.update_review(
+    old_review = datastore.get_review(int(review_id))
+    updated_review = datastore.update_review(
         review_id=int(review_id),
         url=updated_url,
         reviewer_id=updated_reviewer_id,
         status=updated_status
     )
 
-    # Send confirmation message
-    user_id = body["user"]["id"]
+    # Only ping reviwer if there is a new one.
+    if old_review.reviewer_id != updated_review.reviewer_id:
+        ping_reviewer(client, updated_review)
+
     client.chat_postEphemeral(
-        channel=user_id,
+        channel=channel_id,
         user=user_id,
         text="The review has been successfully updated."
     )

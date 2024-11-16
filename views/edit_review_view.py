@@ -1,9 +1,10 @@
 from models import ReviewStatus
+from utils import metadata_serializer
 from slack_sdk.models.views import View
 from slack_sdk.models.blocks import InputBlock
 from slack_sdk.models.blocks import PlainTextInputElement, StaticSelectElement, Option
 
-def edit_review_view(review, reviewers):
+def edit_review_view(channel_id, review, reviewers):
     # Prepare options for the reviewer dropdown, pre-selecting the current reviewer
     reviewer_options = [
         Option(text={"type": "plain_text", "text": reviewer.name}, value=str(reviewer.id))
@@ -19,13 +20,19 @@ def edit_review_view(review, reviewers):
     ]
     current_status_option = next((option for option in status_options if option.value == review.status.value), None)
 
+    private_metadata = metadata_serializer({
+        'review_id': review.id,
+        'channel_id': channel_id
+    })
+
     return View(
         type="modal",
         callback_id="submit_edit_review",
-        private_metadata=str(review.id),
+        private_metadata=private_metadata,
         title={"type": "plain_text", "text": "Edit Review"},
         submit={"type": "plain_text", "text": "Save"},
         blocks=[
+            # TODO use: https://api.slack.com/reference/block-kit/block-elements#url
             InputBlock(
                 block_id="url_input",
                 label={"type": "plain_text", "text": "Review URL"},
