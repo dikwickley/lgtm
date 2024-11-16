@@ -130,11 +130,11 @@ def handle_review_submission(ack, body, client):
     channel_id = body["view"]["private_metadata"]
     submitted_data = body["view"]["state"]["values"]
     review_url = submitted_data["url_input"]["url"]["value"]
-    reviewer_slack_id = submitted_data["reviewer_select"]["selected_reviewer"]["selected_option"]["value"]
+    reviewer_id = submitted_data["reviewer_select"]["selected_reviewer"]["selected_option"]["value"]
     user_slack_id = body["user"]["id"]  # The person who initiated the review
 
     user = datastore.get_user_by_slack_id(user_slack_id, channel_id)
-    reviewer = datastore.get_user_by_slack_id(reviewer_slack_id, channel_id)
+    reviewer = datastore.get_user_by_id(reviewer_id, channel_id)
 
     # Add the review to the database
     new_review = datastore.create_review(user_id=user.id, url=review_url, reviewer_id=reviewer.id, status=ReviewStatus.IN_REVIEW)
@@ -145,7 +145,7 @@ def handle_review_submission(ack, body, client):
     channel_id = body["view"]["private_metadata"]
     client.chat_postMessage(
         channel=channel_id,
-        text=f"<@{user_slack_id}> requested a review from <@{reviewer_slack_id}> for {review_url}"
+        text=f"<@{user_slack_id}> requested a review from <@{reviewer.slack_id}> for {review_url}"
     )
 
 @app.command("/backlog")

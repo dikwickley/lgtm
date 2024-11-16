@@ -4,6 +4,9 @@ class DataStore:
     def __init__(self, db):
         self.db = db
 
+    def get_user_by_id(self, id: str, channel_id: str):
+        return self.db.query(User).filter(User.id == id, User.channel_id == channel_id).first()
+
     def create_user(self, name: str, slack_id: str, channel_id: str, is_reviewer: bool = False):
         new_user = User(name=name, slack_id=slack_id, channel_id=channel_id, is_reviewer=is_reviewer)
         self.db.add(new_user)

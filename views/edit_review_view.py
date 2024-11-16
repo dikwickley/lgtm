@@ -1,15 +1,13 @@
 from models import ReviewStatus
 from utils import metadata_serializer
+from views.review_view import make_reviewer_option
 from slack_sdk.models.views import View
 from slack_sdk.models.blocks import InputBlock
 from slack_sdk.models.blocks import PlainTextInputElement, StaticSelectElement, Option
 
 def edit_review_view(channel_id, review, reviewers):
     # Prepare options for the reviewer dropdown, pre-selecting the current reviewer
-    reviewer_options = [
-        Option(text={"type": "plain_text", "text": reviewer.name}, value=str(reviewer.id))
-        for reviewer in reviewers
-    ]
+    reviewer_options = [make_reviewer_option(reviewer)for reviewer in reviewers]
     current_reviewer_option = next((option for option in reviewer_options if option.value == str(review.reviewer_id)), None)
 
     # TODO: Make this dynamic based on items in ReivewStatus.
@@ -50,7 +48,7 @@ def edit_review_view(channel_id, review, reviewers):
             ),
             InputBlock(
                 block_id="reviewer_select",
-                label={"type": "plain_text", "text": "Select Reviewer"},
+                label={"type": "plain_text", "text": "Select Reviewer (name | backlog)"},
                 element=StaticSelectElement(
                     action_id="selected_reviewer",
                     options=reviewer_options,

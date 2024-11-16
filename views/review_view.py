@@ -2,20 +2,24 @@ from slack_sdk.models.views import View
 from slack_sdk.models.blocks import InputBlock
 from slack_sdk.models.blocks import PlainTextInputElement, StaticSelectElement, Option, SectionBlock
 
+def make_reviewer_option(reviewer):
+    return Option(text={"type": "plain_text", "text": f"{reviewer.name} | {len(reviewer.reviews_given)}"}, value=str(reviewer.id))
+
 def review_modal(channel_id, reviewers):
     # Prepare dropdown options for reviewers
-    reviewer_options = [
-        Option(text={"type": "plain_text", "text": reviewer.name}, value=reviewer.slack_id)
-        for reviewer in reviewers
-    ]
+    reviewer_options = [make_reviewer_option(reviewer)for reviewer in reviewers]
 
     if reviewer_options:
+        reviewer_with_least_backlog = min(reviewers, key=lambda reviewer: len(reviewer.reviews_given))
+        reviewer_with_least_backlog_option = make_reviewer_option(reviewer_with_least_backlog)
+
         reviewer_block = InputBlock(
                 block_id="reviewer_select",
-                label={"type": "plain_text", "text": "Select Reviewer"},
+                label={"type": "plain_text", "text": "Select Reviewer (name | backlog)"},
                 element=StaticSelectElement(
                     action_id="selected_reviewer",
-                    options=reviewer_options
+                    options=reviewer_options,
+                    initial_option=reviewer_with_least_backlog_option
                 )
             )
     else:
